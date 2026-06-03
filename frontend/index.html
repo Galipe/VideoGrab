@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VideoGrab — Baixador de Vídeos</title>
+  <meta name="description" content="Baixe vídeos e áudio do YouTube, Instagram, TikTok, Twitter e muito mais. Recorte trechos antes de baixar. Rápido, simples e gratuito." />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎬</div>
+      <span class="logo-text">VideoGrab</span>
+    </div>
+    <p class="tagline">Baixe vídeos e áudio de qualquer site em segundos</p>
+  </header>
+
+  <!-- ── FFmpeg Status Banner ── -->
+  <div id="ffmpeg-banner" style="display:none;" class="ffmpeg-banner fade-in"></div>
+
+  <!-- ── URL Input Card ── -->
+  <div class="card input-section fade-in">
+    <div class="input-label">
+      <span>🔗</span> Cole o link do vídeo
+    </div>
+    <div class="input-wrap">
+      <input
+        type="url"
+        id="url-input"
+        class="url-input"
+        placeholder="https://www.youtube.com/watch?v=..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn-fetch" id="btn-fetch">
+        <span>🔍</span>
+        <span>Buscar</span>
+      </button>
+    </div>
+    <div class="paste-hint">
+      <span>💡</span>
+      Dica: pressione <kbd>Ctrl</kbd>+<kbd>V</kbd> com o link copiado e clique em Buscar
+    </div>
+  </div>
+
+  <!-- ── Video Info Card ── -->
+  <div class="card fade-in" id="info-section">
+    <div class="video-preview" id="video-preview">
+      <div class="thumb-wrap" id="thumb-wrap">
+        <div class="thumb-placeholder">🎥</div>
+      </div>
+      <div class="video-meta">
+        <div class="video-title" id="video-title">Carregando…</div>
+        <div class="meta-pills" id="meta-pills"></div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;" />
+
+    <!-- Format Tabs -->
+    <div class="format-tabs" id="format-tabs">
+      <button class="tab-btn active" data-type="video" id="tab-video">
+        🎞️ Vídeo
+      </button>
+      <button class="tab-btn" data-type="audio" id="tab-audio">
+        🎵 Somente Áudio
+      </button>
+    </div>
+
+    <!-- Quality Grid -->
+    <div class="quality-label">Escolha a qualidade</div>
+    <div class="quality-grid" id="quality-grid"></div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button class="btn-download" id="btn-download" disabled>
+        <span>⬇️</span>
+        <span id="btn-download-text">Selecione uma qualidade</span>
+      </button>
+      <button class="btn-trim-action" id="btn-trim" disabled title="Recortar antes de baixar (requer FFmpeg)">
+        <span>✂️</span>
+        <span>Recortar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Trimmer Section ── -->
+  <div class="card fade-in" id="trimmer-section">
+    <div class="trimmer-header">
+      <span>✂️</span>
+      <span>Recortar Vídeo</span>
+      <div class="trimmer-shortcuts-hint">
+        Atalhos: <kbd>Espaço</kbd> play · <kbd>←→</kbd> frame · <kbd>Shift+←→</kbd> 5s · <kbd>I</kbd> início · <kbd>O</kbd> fim
+      </div>
+    </div>
+
+    <!-- Video Player -->
+    <div class="trimmer-player-wrap">
+      <video id="trim-video" preload="metadata" playsinline></video>
+    </div>
+
+    <!-- Timeline -->
+    <div class="trim-timeline-container">
+      <div class="trim-timeline" id="trim-timeline">
+        <div class="trim-region" id="trim-region"></div>
+        <div class="trim-handle start" id="handle-start">
+          <div class="handle-line"></div>
+          <div class="handle-grip"></div>
+        </div>
+        <div class="trim-handle end" id="handle-end">
+          <div class="handle-line"></div>
+          <div class="handle-grip"></div>
+        </div>
+        <div class="trim-playhead" id="trim-playhead"></div>
+      </div>
+    </div>
+
+    <!-- Time Displays -->
+    <div class="trim-times">
+      <div class="trim-time-group">
+        <span class="trim-time-label">INÍCIO</span>
+        <span class="trim-time-value accent" id="trim-start-time">0:00.00</span>
+      </div>
+      <div class="trim-clip-info">
+        <span>✂️</span>
+        <span id="trim-clip-duration">0:00.00</span>
+      </div>
+      <div class="trim-time-group">
+        <span class="trim-time-label">FIM</span>
+        <span class="trim-time-value cyan" id="trim-end-time">0:00.00</span>
+      </div>
+    </div>
+
+    <!-- Controls Row -->
+    <div class="trim-controls">
+      <button class="trim-ctrl-btn" id="skip-back-5" title="Retroceder 5 segundos">⏪ 5s</button>
+      <button class="trim-ctrl-btn" id="frame-back" title="Frame anterior">⏮</button>
+      <button class="trim-ctrl-btn play-btn" id="trim-play-pause" title="Play / Pause">▶</button>
+      <button class="trim-ctrl-btn" id="frame-forward" title="Próximo frame">⏭</button>
+      <button class="trim-ctrl-btn" id="skip-forward-5" title="Avançar 5 segundos">5s ⏩</button>
+    </div>
+
+    <!-- Set Markers Row -->
+    <div class="trim-marker-row">
+      <button class="trim-marker-btn" id="set-start">📍 Marcar início</button>
+      <span class="trim-current-time" id="current-time-display">0:00.00</span>
+      <button class="trim-marker-btn" id="set-end">📍 Marcar fim</button>
+    </div>
+
+    <!-- Download Clip -->
+    <button class="btn-download" id="btn-trim-download">
+      <span>✂️</span>
+      <span id="btn-trim-download-text">Baixar clip recortado</span>
+    </button>
+  </div>
+
+  <!-- ── Progress Card ── -->
+  <div class="card fade-in" id="progress-section">
+    <div id="progress-content"></div>
+  </div>
+
+  <!-- ── History Section ── -->
+  <div id="history-section" style="display:none;">
+    <div class="section-title">
+      <span>📋</span> Downloads recentes
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+  <!-- ── Supported Sites ── -->
+  <div class="sites-strip">
+    <span class="site-chip">▶️ YouTube</span>
+    <span class="site-chip">📸 Instagram</span>
+    <span class="site-chip">🎵 TikTok</span>
+    <span class="site-chip">🐦 Twitter/X</span>
+    <span class="site-chip">🎬 Vimeo</span>
+    <span class="site-chip">📘 Facebook</span>
+    <span class="site-chip">🎮 Twitch</span>
+    <span class="site-chip">🔴 Reddit</span>
+    <span class="site-chip">+1000 sites</span>
+  </div>
+
+</div>
+
+<!-- ── Toast container ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/trimmer.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

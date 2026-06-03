@@ -1,0 +1,20 @@
+# Deploy do VideoGrab no Render (plano gratuito).
+# Como usar:
+#   1. Suba este projeto para um repositório no GitHub.
+#   2. No painel do Render → "New +" → "Blueprint" → conecte o repo.
+#   3. O Render lê este arquivo e cria o serviço via Docker automaticamente.
+#   4. Copie a URL gerada (ex.: https://videograb-xxxx.onrender.com) e cole em
+#      extension/config.js e em extension/manifest.json (host_permissions).
+#
+# Observação: no plano gratuito o serviço "dorme" após ~15 min sem uso e
+# leva ~30-50s para acordar na primeira requisição (cold start).
+services:
+  - type: web
+    name: videograb
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: CLOUD_MODE
+        value: "true"
+    healthCheckPath: /api/status

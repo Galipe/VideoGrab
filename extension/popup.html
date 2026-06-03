@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>VideoGrab</title>
+  <style>
+    :root {
+      --bg: #0b0816;
+      --panel: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #6366f1;
+      --secondary: #a855f7;
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      width: 380px;
+      padding: 16px;
+    }
+
+    .container { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); padding-bottom: 10px;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .logo-text {
+      font-weight: 700; font-size: 16px; letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .status-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: 20px; background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+    .status-badge.online .status-dot { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 1.5s infinite alternate; }
+    .status-badge.offline .status-dot { background: var(--error); box-shadow: 0 0 8px var(--error); }
+    @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+    /* Input */
+    .input-wrap { display: flex; gap: 6px; }
+    .url-input {
+      flex: 1; padding: 9px 10px; font-size: 12px;
+      background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); outline: none;
+    }
+    .url-input:focus { border-color: var(--primary); }
+
+    /* Buttons */
+    .btn {
+      width: 100%; padding: 10px 16px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; color: #fff;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      gap: 8px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.4); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { background: #374151; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-fetch { width: auto; padding: 9px 12px; font-size: 12px; }
+
+    /* Card */
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .hidden { display: none !important; }
+
+    /* Video info */
+    .video-preview { display: flex; gap: 10px; }
+    .thumb-wrap {
+      width: 96px; height: 60px; flex-shrink: 0; border-radius: 8px; overflow: hidden;
+      background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+    }
+    .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .video-meta { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .video-title {
+      font-size: 12px; font-weight: 600; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .meta-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pill {
+      font-size: 10px; color: var(--text-muted); background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border); border-radius: 12px; padding: 2px 7px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+    }
+
+    /* Tabs */
+    .format-tabs { display: flex; gap: 6px; }
+    .tab-btn {
+      flex: 1; padding: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
+      background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-muted); transition: all 0.15s;
+    }
+    .tab-btn.active { background: rgba(99,102,241,0.18); border-color: var(--primary); color: var(--text); }
+
+    /* Quality grid */
+    .quality-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; }
+    .quality-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .quality-btn {
+      padding: 8px; font-size: 11px; font-weight: 600; cursor: pointer;
+      background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); transition: all 0.15s;
+    }
+    .quality-btn:hover { border-color: var(--primary); }
+    .quality-btn.selected { background: rgba(99,102,241,0.22); border-color: var(--primary); }
+
+    /* Progress */
+    .progress-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .progress-stats { font-size: 10px; color: var(--text-muted); display: flex; gap: 10px; margin-top: 4px; }
+    .progress-bar-wrap { height: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.3s; }
+    .progress-pct { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 4px; }
+    .status-done, .status-error { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+    .status-done .icon-big { font-size: 24px; }
+    .status-warning { font-size: 11px; color: #fbbf24; margin-top: 6px; }
+
+    /* Spinner */
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .msg { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.4; }
+    .msg.error { color: #fca5a5; }
+    .trim-link {
+      font-size: 11px; color: #a5b4fc; text-align: center; cursor: pointer;
+      text-decoration: underline; background: none; border: none; padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="brand">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">VideoGrab</span>
+      </div>
+      <div id="status-badge" class="status-badge">
+        <div class="status-dot"></div>
+        <span id="status-text">Verificando…</span>
+      </div>
+    </div>
+
+    <!-- URL input -->
+    <div class="input-wrap">
+      <input type="url" id="url-input" class="url-input"
+             placeholder="https://youtube.com/watch?v=…" autocomplete="off" spellcheck="false" />
+      <button id="btn-fetch" class="btn btn-fetch"><span>🔍</span></button>
+    </div>
+
+    <!-- Video info + options -->
+    <div id="info-card" class="card hidden">
+      <div class="video-preview">
+        <div class="thumb-wrap" id="thumb-wrap"><div>🎥</div></div>
+        <div class="video-meta">
+          <div class="video-title" id="video-title">…</div>
+          <div class="meta-pills" id="meta-pills"></div>
+        </div>
+      </div>
+
+      <div class="format-tabs">
+        <button class="tab-btn active" id="tab-video">🎞️ Vídeo</button>
+        <button class="tab-btn" id="tab-audio">🎵 Áudio</button>
+      </div>
+
+      <div class="quality-label">Qualidade</div>
+      <div class="quality-grid" id="quality-grid"></div>
+
+      <button id="btn-download" class="btn" disabled>
+        <span>⬇️</span><span id="btn-download-text">Selecione uma qualidade</span>
+      </button>
+
+      <button id="btn-trim" class="trim-link hidden">✂️ Recortar trecho no editor web</button>
+    </div>
+
+    <!-- Progress -->
+    <div id="progress-card" class="card hidden">
+      <div id="progress-content"></div>
+    </div>
+
+    <div id="footer-msg" class="msg"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

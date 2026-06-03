@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "VideoGrab",
+  "version": "2.0",
+  "description": "Baixe vídeos e áudio de qualquer site direto pelo navegador — sem instalar nada, processado na nuvem.",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "downloads",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://SEU-APP.onrender.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
