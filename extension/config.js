@@ -10,4 +10,4 @@
        no manifest.json para o mesmo endereço.
    ────────────────────────────────────────────── */
 
-const VIDEOGRAB_SERVER = "https://SEU-APP.onrender.com";
+const VIDEOGRAB_SERVER = "https://videograb-kbqc.onrender.com";

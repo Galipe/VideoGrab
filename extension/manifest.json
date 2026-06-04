@@ -11,7 +11,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://SEU-APP.onrender.com/*"
+    "https://videograb-kbqc.onrender.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
