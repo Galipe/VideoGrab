@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.request
@@ -96,6 +97,40 @@ def _find_ffmpeg() -> Optional[str]:
 
 FFMPEG_LOCATION = _find_ffmpeg()
 
+# ── YouTube anti-bot (cookies / clientes alternativos) ──────────────────────────
+# Em IPs de datacenter (Render, etc.) o YouTube costuma exigir login
+# ("Sign in to confirm you're not a bot"). Para contornar:
+#   1. Tentamos clientes alternativos do YouTube (android/tv/web_safari).
+#   2. Se YTDLP_COOKIES (conteúdo do cookies.txt) ou YTDLP_COOKIEFILE (caminho)
+#      estiver definido como variável de ambiente, usamos os cookies.
+# IMPORTANTE: defina YTDLP_COOKIES como SECRET no host — nunca comite cookies no repo.
+
+def _get_cookiefile() -> Optional[str]:
+    content = os.environ.get("YTDLP_COOKIES")
+    if content:
+        path = os.path.join(tempfile.gettempdir(), "vg_cookies.txt")
+        # Reescreve se o conteúdo do env mudou
+        if not os.path.exists(path) or open(path, encoding="utf-8").read() != content:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+        return path
+    path = os.environ.get("YTDLP_COOKIEFILE")
+    if path and os.path.exists(path):
+        return path
+    return None
+
+def _common_ydl_opts() -> dict:
+    """Opções compartilhadas por info/preview/download para driblar o bloqueio
+    do YouTube em servidores na nuvem."""
+    opts: dict = {
+        # Clientes que muitas vezes passam sem login a partir de IPs de datacenter.
+        "extractor_args": {"youtube": {"player_client": ["tv", "android", "web_safari"]}},
+    }
+    cf = _get_cookiefile()
+    if cf:
+        opts["cookiefile"] = cf
+    return opts
+
 # ── Models ─────────────────────────────────────────────────────────────────────
 
 class InfoRequest(BaseModel):
@@ -112,13 +147,15 @@ class DownloadRequest(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def get_ydl_opts_info():
-    return {
+    opts = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": True,
         "format": "bestvideo+bestaudio/best",
     }
+    opts.update(_common_ydl_opts())
+    return opts
 
 def sanitize(text: str) -> str:
     return re.sub(r"[^\w\s\-\(\)\[\]áàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ]", "", text).strip()
@@ -431,6 +468,9 @@ def _run_download(download_id: str, url: str, format_type: str, quality: str,
                     "progress_hooks": [_progress_hook(download_id)],
                 }
                 state["warning"] = "FFmpeg nao encontrado: usando formato pre-mesclado (qualidade pode ser limitada). Instale FFmpeg para qualidade maxima."
+
+        # Aplica cookies / clientes alternativos do YouTube em qualquer branch acima
+        ydl_opts.update(_common_ydl_opts())
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
