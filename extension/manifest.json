@@ -11,7 +11,8 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://videograb-kbqc.onrender.com/*"
+    "http://localhost:7878/*",
+    "http://127.0.0.1:7878/*"
   ],
   "action": {
     "default_popup": "popup.html",
