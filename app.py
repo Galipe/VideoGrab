@@ -136,8 +136,11 @@ def _common_ydl_opts() -> dict:
     if cf:
         # Com cookies, deixamos o yt-dlp escolher o cliente padrão (mais confiável).
         opts["cookiefile"] = cf
-    else:
-        # Sem cookies: tenta clientes que às vezes passam sem login em IP de datacenter.
+    elif not IS_LOCAL:
+        # SÓ na nuvem (IP de datacenter): força clientes alternativos para driblar o
+        # bloqueio anti-bot. Esses clientes costumam LIMITAR as resoluções (ex.: 360p).
+        # Localmente (IP residencial) não precisamos disso, então deixamos os defaults
+        # do yt-dlp, que retornam todas as resoluções (720p/1080p/4K/...).
         opts["extractor_args"] = {"youtube": {"player_client": ["tv", "android", "web_safari"]}}
     return opts
 
