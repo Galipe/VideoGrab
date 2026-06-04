@@ -14,11 +14,20 @@ import urllib.parse
 import uuid
 import webbrowser
 
-# Fix Unicode output on Windows
-if sys.stdout.encoding != 'utf-8':
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-if sys.stderr.encoding != 'utf-8':
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+# Sob pythonw (modo oculto) sys.stdout/sys.stderr são None — qualquer print()
+# quebraria. Redireciona para devnull para que todo o código possa imprimir à vontade.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+# Fix Unicode output on Windows.
+for _stream in (sys.stdout, sys.stderr):
+    if getattr(_stream, "encoding", None) != "utf-8":
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
 
 from pathlib import Path
 from typing import Optional
@@ -636,6 +645,11 @@ if __name__ == "__main__":
     elif public_mode:
         print("Modo publico ativo — aguarde o link do Cloudflare Tunnel\n")
     else:
-        print(f"Abrindo http://localhost:{port}\n")
-        threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+        # --no-browser: usado pelo autostart oculto para não abrir uma aba a cada boot
+        no_browser = "--no-browser" in sys.argv or os.environ.get("VG_NO_BROWSER") == "1"
+        if no_browser:
+            print(f"Servidor local em http://localhost:{port} (modo oculto)\n")
+        else:
+            print(f"Abrindo http://localhost:{port}\n")
+            threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{port}")).start()
     uvicorn.run(app, host=host, port=port, log_level="warning")

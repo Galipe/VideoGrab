@@ -1,27 +1,28 @@
 @echo off
 title VideoGrab (servidor local)
-:: Lancador enxuto para iniciar junto com o Windows.
+:: Lancador enxuto para iniciar junto com o Windows (modo oculto via start_hidden.vbs).
 :: Sobe direto o servidor (sem reinstalar dependencias a cada boot).
 :: Para instalar/atualizar dependencias, use o start.bat normal.
 
 cd /d "%~dp0"
 
-:: Verifica Python
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERRO] Python nao encontrado no PATH.
-    echo Rode o start.bat ao menos uma vez para configurar o ambiente.
-    pause
-    exit /b 1
-)
-
 :: Se a porta 7878 ja estiver em uso, o servidor provavelmente ja esta rodando
 netstat -aon | findstr :7878 | findstr LISTENING >nul 2>&1
-if not errorlevel 1 (
-    echo VideoGrab ja parece estar rodando em http://localhost:7878
-    timeout /t 3 /nobreak >nul
-    exit /b 0
-)
+if not errorlevel 1 exit /b 0
 
-echo Iniciando VideoGrab em http://localhost:7878 ...
-python app.py
+:: Descobre o pythonw real (resolve o caminho do python e troca para pythonw.exe).
+:: Evita depender do alias da Windows Store, que pode falhar em modo oculto.
+set "PYW="
+for /f "delims=" %%P in ('where pythonw 2^>nul') do if not defined PYW set "PYW=%%P"
+if not defined PYW (
+    for /f "delims=" %%P in ('where python 2^>nul') do (
+        if not defined PYW (
+            set "PYDIR=%%~dpP"
+            if exist "%%~dpPpythonw.exe" set "PYW=%%~dpPpythonw.exe"
+        )
+    )
+)
+if not defined PYW set "PYW=pythonw"
+
+:: pythonw = sem console (modo oculto). --no-browser para nao abrir aba a cada boot.
+start "" "%PYW%" app.py --no-browser
