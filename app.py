@@ -122,13 +122,14 @@ def _get_cookiefile() -> Optional[str]:
 def _common_ydl_opts() -> dict:
     """Opções compartilhadas por info/preview/download para driblar o bloqueio
     do YouTube em servidores na nuvem."""
-    opts: dict = {
-        # Clientes que muitas vezes passam sem login a partir de IPs de datacenter.
-        "extractor_args": {"youtube": {"player_client": ["tv", "android", "web_safari"]}},
-    }
+    opts: dict = {}
     cf = _get_cookiefile()
     if cf:
+        # Com cookies, deixamos o yt-dlp escolher o cliente padrão (mais confiável).
         opts["cookiefile"] = cf
+    else:
+        # Sem cookies: tenta clientes que às vezes passam sem login em IP de datacenter.
+        opts["extractor_args"] = {"youtube": {"player_client": ["tv", "android", "web_safari"]}}
     return opts
 
 # ── Models ─────────────────────────────────────────────────────────────────────
