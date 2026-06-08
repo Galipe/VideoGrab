@@ -259,6 +259,10 @@ async function startDownload(trimStart = null, trimEnd = null) {
   if (trimStart !== null) body.trim_start = trimStart;
   if (trimEnd !== null) body.trim_end = trimEnd;
 
+  // Compression level (video only; backend ignores it for audio)
+  const compressSel = document.getElementById('compress-select');
+  if (compressSel && compressSel.value) body.compress = compressSel.value;
+
   try {
     const res = await fetch(`${API}/api/download`, {
       method: 'POST',
@@ -368,38 +372,42 @@ function renderProgress(state) {
     return;
   }
 
+  if (status === 'compressing') {
+    progressContent.innerHTML = `
+      <div class="progress-header">
+        <div class="progress-title"><div class="spinner"></div> 🗜️ Comprimindo arquivo…</div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:99%"></div></div>
+      <div class="progress-sub">Isso pode levar alguns minutos em vídeos grandes.</div>`;
+    return;
+  }
+
   if (status === 'done') {
     const dir = output_dir || '';
     const warningHtml = state.warning
       ? `<div class="status-warning">⚠️ ${escHtml(state.warning)}</div>`
       : '';
       
-    let actionBtnHtml = '';
-    if (localMode) {
-      actionBtnHtml = `
-        <button class="btn-open-folder" onclick="openFolder('${escAttr(dir)}')">
-          📂 Abrir pasta
-        </button>
-      `;
-    } else {
-      actionBtnHtml = `
-        <button class="btn-open-folder" onclick="downloadFile('${escAttr(state.download_id)}')">
-          📥 Baixar Arquivo
-        </button>
-      `;
-    }
+    // Sempre entrega via download do navegador → vai para a pasta Downloads.
+    const actionBtnHtml = `
+      <button class="btn-open-folder" onclick="downloadFile('${escAttr(state.download_id)}')">
+        📥 Baixar arquivo
+      </button>
+    `;
 
     progressContent.innerHTML = `
       <div class="status-done">
         <div class="icon-big">✅</div>
         <div class="status-info">
-          <div class="status-title">Download concluído!</div>
-          <div class="status-sub" title="${escHtml(dir)}">${escHtml(localMode ? (dir || 'Arquivo salvo na pasta de downloads') : 'Pronto para download')}</div>
+          <div class="status-title">Pronto!</div>
+          <div class="status-sub">Clique para salvar na sua pasta de Downloads.</div>
         </div>
         ${actionBtnHtml}
       </div>
       ${warningHtml}`;
-    toast('Download concluído! 🎉', 'success');
+    toast('Arquivo pronto! 🎉', 'success');
+    // Dispara o download automaticamente (o botão fica como alternativa).
+    if (state.download_id) downloadFile(state.download_id);
     return;
   }
 

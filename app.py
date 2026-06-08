@@ -156,6 +156,15 @@ class DownloadRequest(BaseModel):
     output_dir: Optional[str] = None
     trim_start: Optional[float] = None   # seconds
     trim_end: Optional[float] = None     # seconds
+    compress: Optional[str] = None       # "leve" | "media" | "forte" (somente vídeo)
+
+# Níveis de compressão (re-encode H.264). CRF maior = arquivo menor.
+# "maxh" reduz a resolução (altura máxima) para encolher ainda mais.
+COMPRESS_PRESETS = {
+    "leve":  {"crf": "26", "preset": "fast",     "maxh": None},
+    "media": {"crf": "28", "preset": "fast",     "maxh": 720},
+    "forte": {"crf": "30", "preset": "veryfast", "maxh": 480},
+}
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -369,7 +378,7 @@ async def start_download(req: DownloadRequest):
     thread = threading.Thread(
         target=_run_download,
         args=(download_id, req.url, req.format_type, req.quality, output_dir,
-              req.trim_start, req.trim_end),
+              req.trim_start, req.trim_end, req.compress),
         daemon=True,
     )
     thread.start()
@@ -401,7 +410,7 @@ def _progress_hook(download_id: str):
 
 def _run_download(download_id: str, url: str, format_type: str, quality: str,
                   output_dir: str, trim_start: Optional[float] = None,
-                  trim_end: Optional[float] = None):
+                  trim_end: Optional[float] = None, compress: Optional[str] = None):
     state = downloads[download_id]
     try:
         outtmpl = os.path.join(output_dir, "%(title)s.%(ext)s")
@@ -542,6 +551,48 @@ def _run_download(download_id: str, url: str, format_type: str, quality: str,
                 # Replace original with trimmed version
                 os.remove(downloaded_file)
                 os.rename(trimmed_file, downloaded_file)
+
+        # ── Compression step ───────────────────────────────────
+        # Re-encode em H.264 para reduzir o tamanho do arquivo (só vídeo).
+        if compress and has_ffmpeg and format_type != "audio":
+            preset = COMPRESS_PRESETS.get(compress)
+            src = state.get("filename", "")
+            if preset and src and os.path.exists(src):
+                state.update({"status": "compressing", "progress": 99})
+                base, _ext = os.path.splitext(src)
+                out = base + "_vgcmp.mp4"
+                ffmpeg_exe = os.path.join(ffmpeg_loc, "ffmpeg.exe")
+                cmd = [
+                    ffmpeg_exe, "-y", "-i", src,
+                    "-c:v", "libx264", "-crf", preset["crf"],
+                    "-preset", preset["preset"], "-pix_fmt", "yuv420p",
+                ]
+                if preset["maxh"]:
+                    cmd += ["-vf", f"scale=-2:'min({preset['maxh']},ih)'"]
+                cmd += ["-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", out]
+
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if (result.returncode == 0 and os.path.exists(out)
+                        and os.path.getsize(out) > 0):
+                    if os.path.getsize(out) < os.path.getsize(src):
+                        os.remove(src)
+                        final_mp4 = base + ".mp4"
+                        if os.path.exists(final_mp4) and final_mp4 != out:
+                            os.remove(final_mp4)
+                        os.rename(out, final_mp4)
+                        state["filename"] = final_mp4
+                    else:
+                        os.remove(out)
+                        state["warning"] = ((state.get("warning") or "")
+                            + " A compressão não reduziu o tamanho; mantido o original.").strip()
+                else:
+                    try:
+                        if os.path.exists(out):
+                            os.remove(out)
+                    except Exception:
+                        pass
+                    state["warning"] = ((state.get("warning") or "")
+                        + " Não foi possível comprimir; arquivo original mantido.").strip()
 
         state.update({"status": "done", "progress": 100, "output_dir": output_dir})
 
