@@ -259,10 +259,6 @@ async function startDownload(trimStart = null, trimEnd = null) {
   if (trimStart !== null) body.trim_start = trimStart;
   if (trimEnd !== null) body.trim_end = trimEnd;
 
-  // Compression level (video only; backend ignores it for audio)
-  const compressSel = document.getElementById('compress-select');
-  if (compressSel && compressSel.value) body.compress = compressSel.value;
-
   try {
     const res = await fetch(`${API}/api/download`, {
       method: 'POST',
@@ -369,16 +365,6 @@ function renderProgress(state) {
       </div>
       <div class="progress-bar-wrap"><div class="progress-bar" style="width:99%"></div></div>
       <div class="progress-pct">99%</div>`;
-    return;
-  }
-
-  if (status === 'compressing') {
-    progressContent.innerHTML = `
-      <div class="progress-header">
-        <div class="progress-title"><div class="spinner"></div> 🗜️ Comprimindo arquivo…</div>
-      </div>
-      <div class="progress-bar-wrap"><div class="progress-bar" style="width:99%"></div></div>
-      <div class="progress-sub">Isso pode levar alguns minutos em vídeos grandes.</div>`;
     return;
   }
 

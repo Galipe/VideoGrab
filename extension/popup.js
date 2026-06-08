@@ -229,7 +229,6 @@ async function startDownload() {
         url: currentUrl,
         format_type: selectedType,
         quality: selectedQuality,
-        compress: (document.getElementById('compress-select')?.value) || undefined,
       }),
     });
     if (!res.ok) {
@@ -348,10 +347,8 @@ function renderProgress(state) {
       <div class="progress-pct">${progress}%</div>`;
     return;
   }
-  if (status === 'processing' || status === 'trimming' || status === 'compressing') {
-    const label = status === 'trimming' ? '✂️ Recortando…'
-                : status === 'compressing' ? '🗜️ Comprimindo… (pode demorar)'
-                : 'Processando…';
+  if (status === 'processing' || status === 'trimming') {
+    const label = status === 'trimming' ? '✂️ Recortando…' : 'Processando…';
     progressContent.innerHTML = `
       <div class="progress-title"><span class="spinner"></span> ${label}</div>
       <div class="progress-bar-wrap"><div class="progress-bar" style="width:99%"></div></div>

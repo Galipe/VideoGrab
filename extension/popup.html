@@ -116,12 +116,6 @@
     }
     .quality-btn:hover { border-color: var(--primary); }
     .quality-btn.selected { background: rgba(99,102,241,0.22); border-color: var(--primary); }
-    .compress-select {
-      width: 100%; margin-top: 6px; padding: 8px; font-size: 11px;
-      background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px;
-      color: var(--text); cursor: pointer;
-    }
-    .compress-select:focus { outline: none; border-color: var(--primary); }
 
     /* Progress */
     .progress-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
@@ -186,14 +180,6 @@
 
       <div class="quality-label">Qualidade</div>
       <div class="quality-grid" id="quality-grid"></div>
-
-      <div class="quality-label" style="margin-top:10px;">🗜️ Comprimir</div>
-      <select id="compress-select" class="compress-select">
-        <option value="">Sem compressão (original)</option>
-        <option value="leve">Leve — boa qualidade</option>
-        <option value="media">Média — 720p, menor</option>
-        <option value="forte">Forte — 480p, mínimo</option>
-      </select>
 
       <button id="btn-download" class="btn" disabled>
         <span>⬇️</span><span id="btn-download-text">Selecione uma qualidade</span>
