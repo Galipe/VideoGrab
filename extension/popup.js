@@ -38,6 +38,10 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
   checkServerStatus();
 
+  // Se havia um download em andamento quando o popup foi fechado, reconecta a ele.
+  const resumed = await resumeActiveDownload();
+  if (resumed) return;  // mostra o progresso em vez de buscar um novo vídeo
+
   // Prefer a URL pushed by the context menu, else use the active tab.
   let url = '';
   try {
@@ -233,6 +237,7 @@ async function startDownload() {
       throw new Error(err.detail || `Erro ${res.status}`);
     }
     const { id } = await res.json();
+    await saveActiveDownload(id);
     progressCard.classList.remove('hidden');
     listenProgress(id);
   } catch (e) {
@@ -241,31 +246,74 @@ async function startDownload() {
   }
 }
 
-// ── SSE progress ──────────────────────────────
-function listenProgress(id) {
-  if (activeSSE) activeSSE.close();
-  renderProgress({ status: 'starting' });
+// ── Persistência do download ativo ────────────
+// Permite reabrir o popup e continuar acompanhando o download (o popup é
+// destruído ao fechar, mas o servidor segue baixando em segundo plano).
+const ACTIVE_KEY = 'activeDownload';
+const ACTIVE_MAX_AGE = 6 * 60 * 60 * 1000;  // 6h: descarta registros muito antigos
 
+async function saveActiveDownload(id) {
+  try { await chrome.storage.local.set({ [ACTIVE_KEY]: { id, t: Date.now() } }); } catch (_) {}
+}
+async function clearActiveDownload() {
+  try { await chrome.storage.local.remove(ACTIVE_KEY); } catch (_) {}
+}
+
+async function resumeActiveDownload() {
+  let active;
+  try {
+    const s = await chrome.storage.local.get(ACTIVE_KEY);
+    active = s[ACTIVE_KEY];
+  } catch (_) { return false; }
+
+  if (!active || !active.id) return false;
+  if (active.t && Date.now() - active.t > ACTIVE_MAX_AGE) {
+    await clearActiveDownload();
+    return false;
+  }
+
+  progressCard.classList.remove('hidden');
+  renderProgress({ status: 'starting' });
+  listenProgress(active.id, true);
+  return true;
+}
+
+// ── SSE progress ──────────────────────────────
+function listenProgress(id, resuming = false) {
+  if (activeSSE) activeSSE.close();
+  if (!resuming) renderProgress({ status: 'starting' });
+
+  let gotMessage = false;
   const es = new EventSource(`${API}/api/progress/${id}`);
   activeSSE = es;
 
   es.onmessage = e => {
+    gotMessage = true;
     const state = JSON.parse(e.data);
     renderProgress(state);
     if (state.status === 'done') {
       es.close();
       deliverFile(id);
+      clearActiveDownload();
       btnDownload.disabled = false;
     } else if (state.status === 'error') {
       es.close();
+      clearActiveDownload();
       btnDownload.disabled = false;
     }
   };
 
   es.onerror = () => {
     es.close();
-    renderProgress({ status: 'error', error: 'Conexão com o servidor perdida.' });
     btnDownload.disabled = false;
+    if (resuming && !gotMessage) {
+      // O servidor não conhece mais este download (reiniciou ou expirou): limpa.
+      clearActiveDownload();
+      progressCard.classList.add('hidden');
+      return;
+    }
+    renderProgress({ status: 'error', error: 'Conexão com o servidor perdida.' });
+    clearActiveDownload();
   };
 }
 
